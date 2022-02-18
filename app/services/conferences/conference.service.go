@@ -1,4 +1,4 @@
-package services
+package conferenceService
 
 import (
 	"github.com/gbolu/conference-management-system/app/models"
@@ -15,11 +15,11 @@ func GetAllConferences() (conferences []models.Conference) {
 	return c
 }
 
-func CreateConference(conference *models.Conference) (c *models.Conference) {
+func CreateConference(conference *models.Conference) (c *models.Conference, errors error) {
 	db := database_utils.GetDatabase()
-	db.Create(&conference)
+	err := db.Create(&conference).Error
 
-	return conference
+	return conference, err
 }
 
 func FindConferenceById(uniqueId uuid.UUID) (conference *models.Conference, errors error) {

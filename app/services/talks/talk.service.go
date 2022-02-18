@@ -15,11 +15,11 @@ func GetAllTalksByConferenceID(uniqueId uuid.UUID) (Talks []models.Talk, errors 
 	return c, err
 }
 
-func CreateTalk(Talk *models.Talk) (c *models.Talk) {
+func CreateTalk(Talk *models.Talk) (c *models.Talk, errors error) {
 	db := database_utils.GetDatabase()
-	db.Create(&Talk)
+	err := db.Create(&Talk).Error
 
-	return Talk
+	return Talk, err
 }
 
 func FindTalkById(uniqueId uuid.UUID) (Talk *models.Talk, errors error) {

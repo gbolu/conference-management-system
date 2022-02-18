@@ -3,10 +3,12 @@ package controllers
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gbolu/conference-management-system/app/models"
 	attendeeService "github.com/gbolu/conference-management-system/app/services/attendees"
+	talkServices "github.com/gbolu/conference-management-system/app/services/talks"
 	response "github.com/gbolu/conference-management-system/pkg/utils/responseHandlers"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -17,7 +19,7 @@ func AddAttendeeToTalk(ctx *fiber.Ctx) error {
 	uniqueId, uuidError:= uuid.Parse(ctx.Params("talk_id"))
 
 	if uuidError != nil {
-		panic(fmt.Sprint(uuidError.Error()))
+		return response.SendErrorResponse(ctx, fiber.StatusBadRequest, "Invalid UUID.", []error{errors.New(uuidError.Error())})
 	}
 
 	a:= &models.Attendee{}
@@ -35,6 +37,9 @@ func AddAttendeeToTalk(ctx *fiber.Ctx) error {
 	newAttendee, err := attendeeService.CreateAttendee(a)
 
 	if err != nil {
+		if (strings.Contains(err.Error(), "duplicate")) {
+			return response.SendErrorResponse(ctx, fiber.StatusBadRequest, "Attendee with that username/email already exists.", []error{errors.New(err.Error())})
+		}
 		return response.SendErrorResponse(ctx, fiber.StatusInternalServerError, "Sorry. Unable to create attendee.", []error{errors.New(err.Error())})
 	}
 
@@ -45,10 +50,20 @@ func GetAllAttendeesByTalk(ctx *fiber.Ctx) error {
 	uniqueId, uuidError:= uuid.Parse(ctx.Params("talk_id"))
 
 	if uuidError != nil {
-		panic(fmt.Sprint(uuidError.Error()))
+		return response.SendErrorResponse(ctx, fiber.StatusBadRequest, "Invalid UUID.", []error{errors.New(uuidError.Error())})
 	}
 
-	a, err := attendeeService.FindAllAttendeesByTalkId(uniqueId)
+	talk, err := talkServices.FindTalkById(uniqueId)
+
+	if (err != nil) {
+		if (errors.Is(err, gorm.ErrRecordNotFound)) {
+			return response.SendErrorResponse(ctx, fiber.StatusNotFound, "Talk with that uuid not found.", []error{errors.New(err.Error())})
+		}
+
+		return response.SendErrorResponse(ctx, fiber.StatusInternalServerError, "Unable to find talk. Please try", []error{errors.New(err.Error())})
+	}
+
+	a, err := attendeeService.FindAllAttendeesByTalkId(talk.ID)
 
 	if err != nil {
 		return response.SendErrorResponse(ctx, fiber.StatusInternalServerError, "Sorry. Unable to find attendees.", []error{errors.New(err.Error())})
@@ -62,11 +77,11 @@ func RemoveAttendeeFromTalk(ctx *fiber.Ctx) error {
 	attendeeId, attendeeuidError:= uuid.Parse(ctx.Params("attendee_id"))
 
 	if uuidError != nil {
-		panic(fmt.Sprint(uuidError.Error()))
+		return response.SendErrorResponse(ctx, fiber.StatusBadRequest, "Invalid UUID.", []error{errors.New(uuidError.Error())})
 	}
 
 	if attendeeuidError != nil {
-		panic(fmt.Sprint(uuidError.Error()))
+		return response.SendErrorResponse(ctx, fiber.StatusBadRequest, "Invalid UUID.", []error{errors.New(uuidError.Error())})
 	}
 
 	t, err := attendeeService.DeleteAttendeeByTalkId(uniqueId, attendeeId)

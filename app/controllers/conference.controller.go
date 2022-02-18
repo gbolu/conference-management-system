@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gbolu/conference-management-system/app/models"
@@ -32,7 +33,15 @@ func CreateConference(ctx *fiber.Ctx) error {
 	c.ID = uuid.New()
 	c.CreatedAt = time.Now()
 	c.UpdatedAt = time.Now()
-	newConference:= conferenceServices.CreateConference(c)
+	newConference, err:= conferenceServices.CreateConference(c)
+
+	if (err != nil) {
+		if (strings.Contains(err.Error(), "duplicate")) {
+			return response.SendErrorResponse(ctx, fiber.StatusBadRequest, "Conference with that title already exists.", []error{errors.New(err.Error())})
+		}
+
+		return response.SendErrorResponse(ctx, fiber.StatusInternalServerError, "Unable to create.", []error{errors.New(err.Error())})
+	}
 
 	return response.SendSuccessResponse(ctx, fiber.StatusCreated, "Conference created successfully.", fiber.Map{"conference": newConference})
 }
